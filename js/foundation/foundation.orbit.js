@@ -36,7 +36,7 @@
 
     self.update_active_link = function(index) {
       var link = $('a[data-orbit-link="'+slides_container.children().eq(index).attr('data-orbit-slide')+'"]');
-      link.parents('ul').find('[data-orbit-link]').removeClass(settings.bullets_active_class);
+      link.siblings().removeClass(settings.bullets_active_class);
       link.addClass(settings.bullets_active_class);
     };
 
@@ -46,8 +46,8 @@
       slides_container.addClass(settings.slides_container_class);
       
       if (settings.navigation_arrows) {
-        container.append($('<a href="#">').addClass(settings.prev_class).append('<span>'));
-        container.append($('<a href="#">').addClass(settings.next_class).append('<span>'));
+        container.append($('<a href="#"><span></span></a>').addClass(settings.prev_class));
+        container.append($('<a href="#"><span></span></a>').addClass(settings.next_class));
       }
 
       if (settings.timer) {
@@ -60,13 +60,14 @@
 
       if (settings.slide_number) {
         number_container = $('<div>').addClass(settings.slide_number_class);
-        number_container.append('<span></span> of <span></span>');
+        number_container.append('<span></span> ' + settings.slide_number_text + ' <span></span>');
         container.append(number_container);
       }
 
       if (settings.bullets) {
         bullets_container = $('<ol>').addClass(settings.bullets_container_class);
         container.append(bullets_container);
+        bullets_container.wrap('<div class="orbit-bullets-container"></div>');
         slides_container.children().each(function(idx, el) {
           var bullet = $('<li>').attr('data-orbit-slide', idx);
           bullets_container.append(bullet);
@@ -90,8 +91,13 @@
       var dir = 'next';
       locked = true;
       if (next_idx < idx) {dir = 'prev';}
-      if (next_idx >= slides.length) {next_idx = 0;}
-      else if (next_idx < 0) {next_idx = slides.length - 1;}
+      if (next_idx >= slides.length) {
+        if (!settings.circular) return false;
+        next_idx = 0;
+      } else if (next_idx < 0) {
+        if (!settings.circular) return false;
+        next_idx = slides.length - 1;
+      }
       
       var current = $(slides.get(idx));
       var next = $(slides.get(next_idx));
@@ -100,7 +106,7 @@
       current.removeClass(settings.active_slide_class);
       next.css('zIndex', 4).addClass(settings.active_slide_class);
 
-      slides_container.trigger('orbit:before-slide-change');
+      slides_container.trigger('before-slide-change.fndtn.orbit');
       settings.before_slide_change();
       self.update_active_link(next_idx);
       
@@ -110,7 +116,7 @@
           locked = false;
           if (start_timer === true) {timer = self.create_timer(); timer.start();}
           self.update_slide_number(idx);
-          slides_container.trigger('orbit:after-slide-change',[{slide_number: idx, total_slides: slides.length}]);
+          slides_container.trigger('after-slide-change.fndtn.orbit',[{slide_number: idx, total_slides: slides.length}]);
           settings.after_slide_change(idx, slides.length);
         };
         if (slides_container.height() != next.height() && settings.variable_height) {
@@ -267,7 +273,7 @@
       $(window).on('load', function(){
         container.prev('.preloader').css('display', 'none');
       });
-      slides_container.trigger('orbit:ready');
+      slides_container.trigger('ready.fndtn.orbit');
     };
 
     self.init();
@@ -306,7 +312,7 @@
         self.restart();
         callback();
       }, left);
-      el.trigger('orbit:timer-started')
+      el.trigger('timer-started.fndtn.orbit')
     };
 
     this.stop = function() {
@@ -317,7 +323,7 @@
       left = left - (end - start);
       var w = 100 - ((left / duration) * 100);
       self.update_progress(w);
-      el.trigger('orbit:timer-stopped');
+      el.trigger('timer-stopped.fndtn.orbit');
     };
   };
   
@@ -329,15 +335,17 @@
     animMargin[margin] = '0%';
 
     this.next = function(current, next, callback) {
-      next.animate(animMargin, duration, 'linear', function() {
+      current.animate({marginLeft:'-100%'}, duration);
+      next.animate(animMargin, duration, function() {
         current.css(margin, '100%');
         callback();
       });
     };
 
     this.prev = function(current, prev, callback) {
+      current.animate({marginLeft:'100%'}, duration);
       prev.css(margin, '-100%');
-      prev.animate(animMargin, duration, 'linear', function() {
+      prev.animate(animMargin, duration, function() {
         current.css(margin, '100%');
         callback();
       });
@@ -372,7 +380,7 @@
   Foundation.libs.orbit = {
     name: 'orbit',
 
-    version: '4.3.1',
+    version: '5.0.0',
 
     settings: {
       animation: 'slide',
@@ -383,6 +391,7 @@
       stack_on_small: false,
       navigation_arrows: true,
       slide_number: true,
+      slide_number_text: 'of',
       container_class: 'orbit-container',
       stack_on_small_class: 'orbit-stack-on-small',
       next_class: 'orbit-next',
@@ -398,6 +407,7 @@
       active_slide_class: 'active',
       orbit_transition_class: 'orbit-transitioning',
       bullets: true,
+      circular: true,
       timer: true,
       variable_height: false,
       swipe: true,
@@ -407,7 +417,6 @@
 
     init: function (scope, method, options) {
       var self = this;
-      Foundation.inherit(self, 'data_options');
 
       if (typeof method === 'object') {
         $.extend(true, self.settings, method);
@@ -428,4 +437,4 @@
   };
 
     
-}(Foundation.zj, this, this.document));
+}(jQuery, this, this.document));
